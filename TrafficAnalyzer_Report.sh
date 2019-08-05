@@ -1,11 +1,11 @@
 #!/bin/sh
-VER="v1.13"
-#======================================================================================= © 2016-2019 Martineau v1.13
+VER="v1.14"
+#======================================================================================= © 2016-2019 Martineau v1.14
 #
 # Scan Traffic Analyzer database
 #
 #    TrafficAnalyzer     [help | -h] ['ip='{[ip_address[,...] | hostname[...]]}] ['app='{category_name[,...]}] ['app='{application_name[,...]}] 
-#                        ['date='[yyyy/mm/dd[,...]]] ['time='[hh:mm:ss[,...]]] ['sqldb='{database}] ['backup'] ['nofilter'] ['email']  ['mode=or'] ['noscript']
+#                        ['date='[yyyy/mm/dd[,...]]] ['time='[hh:mm:ss[,...]]] ['sqldb='{database}] ['backup[=directory]'] ['nofilter'] ['email']  ['mode=or'] ['noscript']
 #                        ['count'] ['sortby='column] ['trimdb[='max_sqldb_size]] ['mac='mac_address[,...]] ['report='{file_name}] [nodisplay] ['showsql']
 #
 #    TrafficAnalyzer
@@ -541,12 +541,12 @@ Backup_DB() {
 
     echo -en $cBRED >&2
 
-    mkdir -p /opt/var/$DB_DIR
-    cp -p $DB /opt/var/$DB_DIR/$DBNAME-Backup-$NOW
+    mkdir -p $BACKUP_DIR//$DB_DIR
+    cp -p $DB $BACKUP_DIR//$DB_DIR/$DBNAME-Backup-$NOW
     RC=$?
     if [ $RC -eq 0 ];then
         echo -en $cBGRE >&2
-        Say "'"$DB"' backup completed successfully"
+        Say "'"$DB"' backup completed successfully to '"$BACKUP_DIR/$DB_DIR/$DBNAME-Backup-$NOW"'"	#v1.14
     else
         echo -e "\a"
         Say "***ERROR '"$DB"' backup FAILED!"
@@ -601,6 +601,7 @@ COLORCAT="$cBCYA"
 COLORAPP="$cBCYA"
 COLORTX="$cBCYA"
 COLORRX="$cBCYA"
+BACKUP_DIR="/opt/var"                               # v1.12 Default backup directory - i.e. Entware or can be overidded by commandline
 
 USE_TODAYS_DATE=1                                   # v1.08
 USE_CURRENT_HOUR=1                                  # v1.08
@@ -850,9 +851,20 @@ while [ $# -gt 0 ]; do    # Until you run out of parameters . . .       # v1.07
     nofilter)
             CMDNOFILTER="NoFilter"
             ;;
-    backup)
-            CMDBACKUP="Backup"
-            ;;
+    backup|backup=*)                            # v1.12
+            if [ "$1" = "backup" ];then
+                CMDBACKUP="Backup"              # Use default '/opt/var/' Entware  
+            else
+                CMDBACKUP="$(echo "$1" | sed -n "s/^.*backup=//p" | awk '{print $1}')"
+                if [ "$CMDBACKUP" = "/tmp" ] || [ ! -d "$CMDBACKUP" ];then
+                    echo -e $cBRED"\a\n\t***ERROR Backup location '"$1"' INVALID. e.g. use a permanent disk e.g. '/mnt/xxxx' but NOT simply '/tmp' or '/tmp/'\n"$cRESET
+                    exit 99
+                else
+                    BACKUP_DIR=$CMDBACKUP
+                    CMDBACKUP="Backup"
+                fi
+            fi
+			;;
     purgeallreset)
             CMDPURGEALLRESET="PurgeAllReset"
             ;;
