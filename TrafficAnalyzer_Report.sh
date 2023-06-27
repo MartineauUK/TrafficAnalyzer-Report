@@ -1,10 +1,10 @@
 #!/bin/sh
-VER="v1.14"
-#======================================================================================= © 2016-2019 Martineau v1.14
+VER="v1.15"
+#======================================================================================= © 2016-2023 Martineau v1.15
 #
 # Scan Traffic Analyzer database
 #
-#    TrafficAnalyzer     [help | -h] ['ip='{[ip_address[,...] | hostname[...]]}] ['app='{category_name[,...]}] ['app='{application_name[,...]}] 
+#    TrafficAnalyzer     [help | -h] ['ip='{[ip_address[,...] | hostname[...]]}] ['app='{category_name[,...]}] ['app='{application_name[,...]}]
 #                        ['date='[yyyy/mm/dd[,...]]] ['time='[hh:mm:ss[,...]]] ['sqldb='{database}] ['backup[=directory]'] ['nofilter'] ['email']  ['mode=or'] ['noscript']
 #                        ['count'] ['sortby='column] ['trimdb[='max_sqldb_size]] ['mac='mac_address[,...]] ['report='{file_name}] [nodisplay] ['showsql']
 #
@@ -181,120 +181,7 @@ SendMail(){
 #=================================> Insert favorite routine here
 #=================================> Insert favorite routine here
 
-    #Say "You need to edit this script and add the Sendmail function first!"
-
-    local SENDMAIL_VER="v3.2"
-    local SENDMAIL_TITLE="Martineau Notification"
-
-    # e.g. Send_email [file | "A_single_line_text_message_in_quotes_to_be_emailed" ] [email_method]
-
-    #       Send_email  /tmp/mnt/sda1/mail.txt
-    #                   Send the preprepared email defined in file '/tmp/mnt/sda1/mail.txt' via Google SMTPS:// using the 'curl' utility
-    #                   (Default transmit method is to use SMTPS:// using curl.)
-    #       Send_email  /tmp/mnt/sda1/mail.txt sendmail
-    #                   Send the preprepared email defined in file '/tmp/mnt/sda1/mail.txt' using the 'sendmail' utility
-    #       Send_email  "This the body text of the email - e.g. disk is FULL"
-    #                   Send the single line of text via Google SMTPS:// using the 'curl' utility
-
-
-    local FROM="EICornes@gmail.com"
-    local TO="EICornes@gmail.com"
-    local USERNAME="EICornes@gmail.com"
-    #NOTE: ONLY use 'Google Application' passwords e.g. 'xxxx xxxx xxxx xxxx' ('Android App')
-    #      NEVER use your normal Gmail account password!!!
-    #      ===============================================
-    local PASSWORD="gmeo tvid oooz ceyo"
-
-
-    # If the first arg isn't a file, then assume it is the start of a single line text message! ;-)
-    if [ ! -e "$1" ];then
-        local BODY=$@                   # Assume message is entirely in quotes!!!
-    else
-        local BODY="Body: SSL/TLS"
-    fi
-
-    local USE_CURL=1
-    if [ "$(echo $@ | grep -owE "\-\-sendmail" | wc -w)" -eq 1 ]; then
-        local USE_CURL=0                # Use 'sendmail' rather than 'curl smtps'
-        BODY=$(echo "$BODY" | sed 's/\-\-sendmail//g')
-    fi
-
-    local MYROUTER=$(nvram get computer_name)
-    [ -z "$(nvram get odmpid)" ] && HARDWARE_MODEL=$(nvram get productid) || HARDWARE_MODEL=$(nvram get odmpid)
-    local BUILDNO=$(nvram get buildno)
-    local EXTENDNO=$(nvram get extendno)
-
-    local FROMNAME="Martineau "$MYROUTER
-
-    # If no email file then create a basic test email..
-    if [ ! -e "$1" ];then
-        # If the USB is available then use it!
-        if [ -d /tmp/mnt/$MYROUTER ]; then
-            local TEMPFILE="/tmp/mnt/$MYROUTER/mail.txt"
-        else
-            local TEMPFILE="/tmp/mail.txt"
-        fi
-
-        echo "Subject: $SENDMAIL_TITLE $SENDMAIL_VER" >$TEMPFILE
-        echo "From: \"$FROMNAME\"<$FROM>" >>$TEMPFILE
-        echo "Date: `date -R`" >>$TEMPFILE
-        echo "" >>$TEMPFILE
-        echo $BODY >>$TEMPFILE
-        echo "" >>$TEMPFILE
-        echo "Uptime is: `uptime | sed -e 's/.*up\(.*\)load.*/\1/' | sed 's/.//;s/.$//' | sed 's/.$//' | sed 's/.$//'`" >>$TEMPFILE
-        ROUTER_UPTIME=$(awk '{printf("%d days %02d hours %02d minutes %02d seconds\n",($1/60/60/24),($1/60/60%24),($1/60%60),($1%60))}' /proc/uptime)
-        echo -e "/proc/uptime is:" $ROUTER_UPTIME >>$TEMPFILE
-        echo "" >>$TEMPFILE
-        echo "--- " >>$TEMPFILE
-        echo "Your friendly" $HARDWARE_MODEL "router.  :-)" >>$TEMPFILE
-        echo "Build v"$BUILDNO $EXTENDNO >>$TEMPFILE
-        echo "" >>$TEMPFILE
-        echo `date` >>$TEMPFILE
-
-    else
-        if [ -z "$(grep -E "^Subject" $1)" ];then               # Prepend the email headers
-            local TEMPFILE="/tmp/Mail_$$.txt"
-            echo -e "Subject: $SENDMAIL_TITLE $SENDMAIL_VER : $SQL_DB_DESC Report" > $TEMPFILE  # Tacky Global variable!  ;-)
-            echo -e "From: \"$FROMNAME\"" >> $TEMPFILE
-            echo -e "Date: `date -R`" >> $TEMPFILE
-            cat $1 >> $TEMPFILE                             # Body of e-mail
-            echo "" >>$TEMPFILE
-            echo "Uptime is: `uptime | sed -e 's/.*up\(.*\)load.*/\1/' | sed 's/.//;s/.$//' | sed 's/.$//' | sed 's/.$//'`" >>$TEMPFILE
-            ROUTER_UPTIME=$(awk '{printf("%d days %02d hours %02d minutes %02d seconds\n",($1/60/60/24),($1/60/60%24),($1/60%60),($1%60))}' /proc/uptime)
-            echo -e "/proc/uptime is:" $ROUTER_UPTIME >>$TEMPFILE
-            echo "" >>$TEMPFILE
-            echo "--- " >>$TEMPFILE
-            echo "Your friendly" $HARDWARE_MODEL "router.  :-)" >>$TEMPFILE
-            echo "Build v"$BUILDNO $EXTENDNO >>$TEMPFILE
-            echo "" >>$TEMPFILE
-            echo `date` >>$TEMPFILE
-            #cat $TEMPFILE
-        else
-            local TEMPFILE=$1                               # Use the pre-prepared email file as-is
-        fi
-
-    fi
-
-    # Use 'smtps://' using curl as the preferred email method unless 'sendmail' explicity requested
-    if [ $USE_CURL -eq 0 ]; then
-        SMTP="smtp.gmail.com:587"
-        cat $TEMPFILE | sendmail -v -H"exec openssl s_client -quiet \
-        -connect $SMTP -tls1 -starttls smtp" \
-        -f"$FROM" \
-        -au"$USERNAME" -ap"$PASSWORD" $TO
-        Say "e-mail sent using sendmail SSL/TLS (non-Certificate)" $SMTP
-    else
-        SMTP="smtp.gmail.com:465"
-        curl -s --url smtps://$SMTP \
-        --mail-from "$FROM" --mail-rcpt "$TO" \
-        --upload-file $TEMPFILE \
-        --ssl-reqd \
-        --user "$USERNAME:$PASSWORD" --insecure
-        Say "e-mail sent using curl smtps:// SSL/TLS (non-Certificate)" $SMTP
-    fi
-
-
-    rm "/tmp/Mail_$$.txt" 2>/dev/null                   # Just in case we created a prepend file!
+    Say "You need to edit this script and add the Sendmail function first!"
 
     return 0
 
@@ -394,7 +281,12 @@ Convert_TO_IP () {
 
            if [ -z "$IP_RANGE" ];then       # Not PINGable so lookup static
 
-              IP_RANGE=$(grep -i "$IP_NAME" /etc/hosts.dnsmasq  | awk '{print $1}')
+              [ -f /etc/hosts.dnsmasq ] && IP_RANGE=$(grep -i "$IP_NAME" /etc/hosts.dnsmasq  | awk '{print $1}')	# v1.15
+
+			  if [ -z "$IP_RANGE" ] && [ -f /jffs/addons/YazDHCP.d/.hostnames ];then								# v1.15
+				IP_RANGE=$(grep -i "$IP_NAME" /jffs/addons/YazDHCP.d/.hostnames | awk '{print $1}')					# v1.15
+			  fi
+
               #logger -s -t "($(basename $0))" $$ "Lookup '$IP_NAME' in DNSMASQ returned:>$IP_RANGE<"
 
               # If entry not matched in /etc /hosts.dnsmasq see if it exists in our IPGroups lookup file
@@ -451,23 +343,47 @@ MAC_to_IP() {
         local RESULT=
 
         if [ $FIRMWARE -gt 38201 ];then
-            # etc/ethers no longer exists/used
-            # Instead /etc/dnsmasq.conf contains
-            #         dhcp-host=00:22:B0:B5:BB:1A,10.88.8.254
-            FN="/etc/dnsmasq.conf"
-            local ADDR_LIST=$(grep -i "$MAC" "$FN" | awk 'BEGIN {FS=","} {print $2}')
+
+			# Check if YazDHCP installed
+			FN="/jffs/addons/YazDHCP.d/.staticlist"							# v1.15
+			if [ -f "$FN" ];then											# v1.15
+				local IP_ADDR=$(grep -iE "$MAC" "$FN" | cut -d',' -f3 )		# v1.15
+				if [ -n "$IP_ADDR" ];then									# v1.15
+					FN="/jffs/addons/YazDHCP.d/.hostnames"					# v1.15
+					HOST_NAME=$(grep "^$IP_ADDR" "$FN" | cut -d' ' -f2)		# v1.15
+					RESULT=$HOST_NAME" "$IP_ADDR							# v1.15
+				fi															# v1.15
+			else															# v1.15
+				# etc/ethers no longer exists/used
+				# Instead /etc/dnsmasq.conf contains
+				#         dhcp-host=00:22:B0:B5:BB:1A,10.88.8.254
+				# v386+
+				#         dhcp-host=48:45:20:D7:A6:22,set:48:45:20:D7:A6:22,HP-Envy13,192.168.1.38
+				FN="/etc/dnsmasq.conf"
+				#local ADDR_LIST=$(grep -i "$MAC" "$FN" | awk 'BEGIN {FS=","} {print $2}')
+				[ -z "ADDR_LIST" ] && local ADDR_LIST=$(grep -i "$MAC" "$FN" | awk 'BEGIN {FS=","} {print $4}')               # v1.15
+			fi
         else
             local ADDR_LIST=$(grep -i "$MAC" "$FN" | awk '{print $2}')
         fi
 
-        if [ -n "$ADDR_LIST" ];then
-            IP_RANGE=$ADDR_LIST
-            IP_ADDR=`grep -i -w "$IP_RANGE" /etc/hosts.dnsmasq | awk '{print $1}'`
-            HOST_NAME=`grep -i -w "$IP_RANGE" /etc/hosts.dnsmasq | awk '{print $2}'`
-            RESULT=$HOST_NAME" "$IP_ADDR
-        else
-            RESULT="***ERROR MAC Address not on LAN ("$FN"): '"$2"'"
-        fi
+		if [ -z "$RESULT" ];then																		# v1.15
+			if [ -n "$ADDR_LIST" ];then
+				IP_RANGE=$ADDR_LIST
+				IP_ADDR=$(grep   -iE "$IP_RANGE" $FN | awk 'BEGIN {FS=","} {print $4}')                 # v1.15
+				HOST_NAME=$(grep -iE "$IP_RANGE" $FN | awk 'BEGIN {FS=","} {print $3}')                 # v1.15
+				RESULT=$HOST_NAME" "$IP_ADDR
+			else
+				ADDR_LIST="$(arp -a | awk '{print $2","$4","$1}' | tr -d '()' | grep -iF "$MAC")"       # v1.15
+				if [ -n "$ADDR_LIST" ];then                                                             # v1.15
+					IP_ADDR=$(echo "$ADDR_LIST" | awk 'BEGIN {FS=","} {print $1}')                      # v1.15
+					HOST_NAME=$(echo "$ADDR_LIST" | awk 'BEGIN {FS=","} {print $3}')                    # v1.15
+					RESULT=$HOST_NAME" "$IP_ADDR
+				else
+					RESULT="***ERROR MAC Address not on LAN ("$FN"): '"$2"'"
+				fi
+			fi
+		fi
 
         echo "$RESULT"
 }
@@ -562,7 +478,9 @@ Main() { true; }            # Syntax that is Atom Shellchecker compatible!
 
 ANSIColours
 
-MYROUTER=$(nvram get computer_name)
+# v384.13+ NVRAM variable 'lan_hostname' supersedes 'computer_name'
+[ -n "$(nvram get computer_name)" ] && MYROUTER=$(nvram get computer_name) || MYROUTER=$(nvram get lan_hostname)
+
 
 FIRMWARE=$(echo $(nvram get buildno) | awk 'BEGIN { FS = "." } {printf("%03d%02d",$1,$2)}')
 
@@ -714,12 +632,12 @@ while [ $# -gt 0 ]; do    # Until you run out of parameters . . .       # v1.07
             [ -z "$FILTER_INUSE" ] && FILTER_DESC="by MAC" || FILTER_DESC=$FILTER_DESC", "$MODE" by MAC"
 
             MAC_SQL=                # v1.04 SQL statement for multiple 'MAC match'
-            
+
 
 
             LAN_MACS=$(echo "$LAN_MACS" | sed 's/^ //p')
             LAN_MACS=$(echo "$LAN_MACS" | awk '{for (i=1;i<=NF;i++) if (!a[$i]++) printf("%s%s",$i,FS)}')   # Remove duplicates
-            
+
             for MAC in $MAC_LIST
                     do
                         if [ -n "$(echo "$MAC" | Is_MAC_Address )" ];then
@@ -734,7 +652,7 @@ while [ $# -gt 0 ]; do    # Until you run out of parameters . . .       # v1.07
 
             [ -z "$FILTER_INUSE" ] && FILTER_INUSE=$MAC_FILTER || FILTER_INUSE=$FILTER_INUSE"|"$MAC_FILTER
 
-            [ -z "$WHERE" ] && WHERE="WHERE ("$MAC_SQL")" || WHERE=$WHERE" "$MODE" "$MAC_SQL")" 
+            [ -z "$WHERE" ] && WHERE="WHERE ("$MAC_SQL")" || WHERE=$WHERE" "$MODE" "$MAC_SQL")"
             ;;
     ip=*)
             # If Hostname/IP then filter on MAC address
@@ -853,7 +771,7 @@ while [ $# -gt 0 ]; do    # Until you run out of parameters . . .       # v1.07
             ;;
     backup|backup=*)                            # v1.12
             if [ "$1" = "backup" ];then
-                CMDBACKUP="Backup"              # Use default '/opt/var/' Entware  
+                CMDBACKUP="Backup"              # Use default '/opt/var/' Entware
             else
                 CMDBACKUP="$(echo "$1" | sed -n "s/^.*backup=//p" | awk '{print $1}')"
                 if [ "$CMDBACKUP" = "/tmp" ] || [ ! -d "$CMDBACKUP" ];then
@@ -881,7 +799,7 @@ while [ $# -gt 0 ]; do    # Until you run out of parameters . . .       # v1.07
                 mac)    SORTBY="mac";SORTBY_DESC="${cBGRE}Sorted by 'mac';";COLORTIME=$cBCYA;COLORMAC=$cBGRE;;
                 cat)    SORTBY="cat_name";SORTBY_DESC="${cBGRE}Sorted by 'cat';";COLORTIME=$cBCYA;COLORCAT=$cBGRE;;
                 app)    SORTBY="app_name";SORTBY_DESC="${cBGRE}Sorted by 'app';";COLORTIME=$cBCYA;COLORAPP=$cBGRE;;
-                # Rx and Tx are from the router's perspective so appear to be reversed!!!! 
+                # Rx and Tx are from the router's perspective so appear to be reversed!!!!
                 tx)     SORTBY="tx";SORTBY_DESC="${cBGRE}Sorted by 'Tx';";COLORTIME=$cBCYA;COLORRX=$cBGRE;;  # LAN->WAN
                 rx)     SORTBY="rx";SORTBY_DESC="${cBGRE}Sorted by 'Rx';";COLORTIME=$cBCYA;COLORTX=$cBGRE;;  # WAN->LAN
                 ip)     UNIXSORT="| sort -k 7";COLORTIME=$cBCYA;COLORIP=$cBGRE;;
@@ -897,7 +815,7 @@ while [ $# -gt 0 ]; do    # Until you run out of parameters . . .       # v1.07
                 TRIMDB=30720                    # Use ASUS recommended 30M maximum aka 30720KB
             else
                 CMDTRIMDB=$(echo "$1" | sed -n "s/^.*trimdb=//p" | awk '{print $1}' | tr ',' ' ' | tr 'a-z' 'A-Z')
-                # Asus recommend 30MB (30720) to be the max size. 
+                # Asus recommend 30MB (30720) to be the max size.
                 # [URL="https://www.snbforums.com/threads/corrupt-config.55569/#post-476775"]Corrupt Config[/URL]
                         if [ -z "$(echo "$CMDTRIMDB" | tr -dc '0-9')" ] || [ "$(echo "$CMDTRIMDB" | tr -dc '0-9')" -eq 0 ];then
                             echo -e $cBRED"\a\n\t***ERROR Trim SQL Database size '$1' cannot be 0/NULL\n"$cRESET
@@ -1061,11 +979,11 @@ if [ -n "$CMDTRIMDB" ];then
         echo -e
         Backup_DB "$SQL_DATABASE"
         Say $(date  "+%T") "Resizing '"$SQL_DATABASE"' - this may take a while....."
-        /usr/sbin/TrafficAnalyzer -d $TRIMDB >/dev/null             # Trim Size is in KB 
+        /usr/sbin/TrafficAnalyzer -d $TRIMDB >/dev/null             # Trim Size is in KB
         /usr/sbin/TrafficAnalyzer -e
         Say $(date  "+%T") "'"$SQL_DATABASE"' resizing request to" $TRIMDB "completed."
         SQLDB_SIZE="$(ls -lh "$SQL_DATABASE" | awk '{print $5}')"
-        Say "'"$SQL_DATABASE"' resized to" $SQLDB_SIZE 
+        Say "'"$SQL_DATABASE"' resized to" $SQLDB_SIZE
     else
         echo -e $cBWHT"\n\t\t\tRequest cancelled!"
     fi
@@ -1114,13 +1032,13 @@ if [ -z "$CMDNOSCRIPT" ];then
     RESULT_CNT=0                                                # v1.08 Total number of matching records
 
     StatusLine $CMDNOANSII"Update" ${cYBLU}$aBOLD"Processing '$SQL_DATABASE' database....please wait!"
-    
+
     echo -en $cBRED                                             # Just in case SQL error e.g. 'Error: database is locked'
-    
+
     [ "$CMDREPORT" = "CreateCSV" ] && rm $REPORT_CSV 2>/dev/null    # v1.12 Erase .csv report file
 
     # Display Summary count of matches  ONLY?
-    if [ -n "$CMDCOUNT" ];then  
+    if [ -n "$CMDCOUNT" ];then
         RESULT_CNT=$(sqlite3 $SQL_DATABASE "SELECT datetime(timestamp, 'unixepoch', 'localtime') AS time,  count(*) FROM $SQL_TABLE $WHERE ORDER BY $SORTBY;"  | cut -d'|' -f2)
         #echo -e $CMDCOUNT_DESC
     else
@@ -1190,7 +1108,7 @@ if [ -z "$CMDNOSCRIPT" ];then
                     else
                         COLOUR_TIME=$cRESET
                     fi
-                    
+
                     if echo "$MAC" | grep -qE "$MAC_FILTER" ;then           # v1.12
                         COLOUR_MAC=$cBRED
                     else
@@ -1225,13 +1143,13 @@ if [ -z "$CMDNOSCRIPT" ];then
                     #               -1065908647
                     #RX_TOTAL=$((RX_TOTAL+RX))              # LAN->WAN
                     #TX_TOTAL=$((TX_TOTAL+TX))              # WAN->LAN
-                    
+
                     # Use old-skool method - but slower :-(
                     RX_TOTAL=`expr "$RX_TOTAL" + "$RX"`         # LAN->WAN
                     TX_TOTAL=`expr "$TX_TOTAL" + "$TX"`         # WAN->LAN
-                    
+
                     RECORD_CNT=$((RECORD_CNT+1))
-                    
+
                     nvram set tmp_TA_TOTAL=$RECORD_CNT                          # Damn subshells VERY UGLY HACK :-(
                     nvram set tmp_RX_TOTAL=$RX_TOTAL                            # Damn subshells VERY UGLY HACK :-(
                     nvram set tmp_TX_TOTAL=$TX_TOTAL                            # Damn subshells VERY UGLY HACK :-(
@@ -1242,10 +1160,10 @@ if [ -z "$CMDNOSCRIPT" ];then
                     if [ -n "$SEND_EMAIL" ];then
                         printf '%-13d %-14d %-10s %-8s %-18s %-17s %-16s %-32s %-32s\n' "$RX" "$TX" "$DATE"  "$TIME" "$MAC" "$HOSTNAME" "$IP" "$CAT" "$APP"  >>$MAILFILE
                     fi
-                    
+
                     # Slow...compared to 'sqlite3 -csv' invocation
                     if [ "$CMDREPORT" = "CreateCSV" ];then                      # v1.12
-                        echo -e "\"$RX\",\"$TX\",\"$DATE $TIME\",\"$MAC\",\"$HOSTNAME\",\"$IP\",\"$CAT\",\"$APP\""  >>$REPORT_CSV 
+                        echo -e "\"$RX\",\"$TX\",\"$DATE $TIME\",\"$MAC\",\"$HOSTNAME\",\"$IP\",\"$CAT\",\"$APP\""  >>$REPORT_CSV
                     fi
 
                     # Experimental scrollable window Rows 10 to 20
@@ -1257,14 +1175,14 @@ if [ -z "$CMDNOSCRIPT" ];then
 
                 done
             fi
-            
+
         # Rx and Tx are from the router's perspective so appear to be reversed!!!!
         RX_TOTAL=$(nvram get tmp_RX_TOTAL); nvram unset tmp_RX_TOTAL        # Damn subshells VERY UGLY HACK :-(
         TX_TOTAL=$(nvram get tmp_TX_TOTAL); nvram unset tmp_TX_TOTAL        # Damn subshells VERY UGLY HACK :-(
 
         # Print the RX and TX summary (Rx and Tx are from the router's perspective so appear to be reversed!!!!)
         printf '%b%-12s%-12s\n'   "${cBYEL}$xERASE" "-----------" "------------"
-    
+
         [ -z $CMDNOFORMAT ] && printf '%b%-12s%-12s\n'   "${cBGRE}$xERASE" "$(Size_Human "$RX_TOTAL")" "$(Size_Human "$TX_TOTAL")" || \
                                  printf '%b%-12s%-12s\n'   "${cBGRE}$xERASE" ""$RX_TOTAL"" ""$TX_TOTAL""
         printf '%b%-12s%-12s\n\n' "${cBYEL}$xERASE" "===========" "============"
@@ -1283,12 +1201,12 @@ if [ -z "$CMDNOSCRIPT" ];then
             StatusLine $CMDNOANSII"Clear"
             #echo -e $cBGRE"\n\tEmail sent..."$MAILFILE     # SendMail() already issues message..but without filename
         fi
-        
+
         RESULT_CNT=$(nvram get tmp_TA_TOTAL);nvram unset tmp_TA_TOTAL   # Damn subshells VERY UGLY HACK :-(
         [ -z "$RESULT_CNT" ] && RESULT_CNT=0
-        
+
     fi
-    
+
     # Summarise
     [ $RESULT_CNT -eq 0 ] && IND=$cBRED || IND=$cBGRE
 
@@ -1304,13 +1222,13 @@ if [ -z "$CMDNOSCRIPT" ];then
 else
     echo -e $cBYEL
     if [ -z "$CMDCOUNT" ];then                                                  # v1.10
-        if [ "$CMDREPORT" = "CreateCSV" ];then                                  # v1.12 
+        if [ "$CMDREPORT" = "CreateCSV" ];then                                  # v1.12
             [ $SHOWSQL -eq 1 ] && echo -e "sqlite3 -header -csv $SQL_DATABASE SELECT * FROM $SQL_TABLE;\n"  # v1.13
             sqlite3 -header -csv $SQL_DATABASE "SELECT * FROM $SQL_TABLE;" > $REPORT_CSV    # Use '*' for raw table
         else
             # NOTE: Display/create the additional human-friendly timestamp!
             [ $SHOWSQL -eq 1 ] && echo -e "sqlite3 $SQL_DATABASE SELECT datetime(timestamp, 'unixepoch', 'localtime') AS time, timestamp, mac, cat_name, app_name, tx, rx FROM $SQL_TABLE $WHERE;\n"    # v1.13
-            sqlite3 $SQL_DATABASE "SELECT datetime(timestamp, 'unixepoch', 'localtime') AS time, timestamp, mac, cat_name, app_name, tx, rx FROM $SQL_TABLE $WHERE;"        
+            sqlite3 $SQL_DATABASE "SELECT datetime(timestamp, 'unixepoch', 'localtime') AS time, timestamp, mac, cat_name, app_name, tx, rx FROM $SQL_TABLE $WHERE;"
         fi
     fi
     [ $SHOWSQL -eq 1 ] && echo -e "sqlite3 $SQL_DATABASE SELECT datetime(timestamp, 'unixepoch', 'localtime') AS time, count(*) FROM $SQL_TABLE $WHERE;\n"  # v1.13
